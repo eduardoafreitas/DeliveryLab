@@ -1,0 +1,44 @@
+# .NET
+bin/
+obj/
+Debug/
+Release/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Testes
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+
+# Publicação e pacotes locais
+artifacts/
+publish/
+*.nupkg
+*.snupkg
+*.Publish.xml
+*.pubxml
+
+# Configurações locais
+.env
+.env.*
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+secrets.json
+
+# Banco de dados local
+*.db
+*.db-shm
+*.db-wal
