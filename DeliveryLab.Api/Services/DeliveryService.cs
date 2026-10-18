@@ -91,6 +91,7 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
             throw new InvalidOperationException($"Cannot change status from {delivery.Status} to {request.Status}.");
         }
 
+        var previousStatus = delivery.Status;
         var now = DateTime.UtcNow;
 
         delivery.Status = request.Status;
@@ -101,9 +102,36 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
             delivery.DeliveredAt = now;
         }
 
+        var history = new DeliveryStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            DeliveryId = delivery.Id,
+            PreviousStatus = previousStatus,
+            NewStatus = request.Status,
+            ChangedAt = now
+        };
+
+        dbContext.DeliveryStatusHistories.Add(history);
+
         await dbContext.SaveChangesAsync();
 
         return ToResponse(delivery);
+    }
+
+    public async Task<List<DeliveryStatusHistoryResponse>> GetHistoryAsync(Guid deliveryId)
+    {
+        return await dbContext.DeliveryStatusHistories
+            .AsNoTracking()
+            .Where(h => h.DeliveryId == deliveryId)
+            .OrderBy(h => h.ChangedAt)
+            .Select(h => new DeliveryStatusHistoryResponse
+            {
+                Id = h.Id,
+                PreviousStatus = h.PreviousStatus,
+                NewStatus = h.NewStatus,
+                ChangedAt = h.ChangedAt
+            })
+            .ToListAsync();
     }
 
     private static DeliveryResponse ToResponse(Delivery delivery) => new()

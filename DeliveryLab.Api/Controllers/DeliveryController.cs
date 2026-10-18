@@ -121,4 +121,19 @@ public class DeliveryController(DeliveryService deliveryService) : ControllerBas
             return BadRequest(ex.Message);
         }
     }
+
+    [HttpGet("{id:guid}/history")]
+    public async Task<ActionResult<List<DeliveryStatusHistoryResponse>>> GetHistory(Guid id)
+    {
+        var delivery = await deliveryService.GetByIdAsync(id);
+
+        if (delivery is null)
+        {
+            return NotFound();
+        }
+
+        var history = await deliveryService.GetHistoryAsync(id);
+
+        return Ok(history);
+    }
 }
