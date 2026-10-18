@@ -89,6 +89,42 @@ namespace DeliveryLab.Api.Data.Migrations
                             TrackingCode = "DL-22222222222222222222222222222222"
                         });
                 });
+
+            modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DeliveryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryId");
+
+                    b.ToTable("DeliveryStatusHistories");
+                });
+
+            modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryStatusHistory", b =>
+                {
+                    b.HasOne("DeliveryLab.Api.Models.Delivery", null)
+                        .WithMany()
+                        .HasForeignKey("DeliveryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
 #pragma warning restore 612, 618
         }
     }

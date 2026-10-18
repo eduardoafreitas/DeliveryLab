@@ -102,6 +102,101 @@ public class DeliveryEndpointsTests
     }
 
     [Fact]
+    public async Task UpdateStatus_WhenValidTransition_CreatesHistory()
+    {
+        using var factory = new DeliveryApiFactory();
+        using var client = factory.CreateClientWithDatabase();
+
+        var created = await client.PostAsJsonAsync(
+            "/api/deliveries",
+            NewDeliveryRequest());
+
+        created.EnsureSuccessStatusCode();
+
+        var delivery = await created.Content
+            .ReadFromJsonAsync<DeliveryResponse>();
+
+        Assert.NotNull(delivery);
+
+        var updateResponse = await client.PatchAsJsonAsync(
+            $"/api/deliveries/{delivery.Id}/status",
+            new UpdateDeliveryStatusRequest
+            {
+                Status = "InTransit"
+            });
+
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+        var history = await client.GetFromJsonAsync<
+            List<DeliveryStatusHistoryResponse>>(
+            $"/api/deliveries/{delivery.Id}/history");
+
+        Assert.NotNull(history);
+        Assert.Single(history);
+
+        Assert.Equal("Created", history[0].PreviousStatus);
+        Assert.Equal("InTransit", history[0].NewStatus);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_WhenInvalidTransition_DoesNotCreateHistory()
+    {
+        using var factory = new DeliveryApiFactory();
+        using var client = factory.CreateClientWithDatabase();
+
+        var created = await client.PostAsJsonAsync(
+            "/api/deliveries",
+            NewDeliveryRequest());
+
+        created.EnsureSuccessStatusCode();
+
+        var delivery = await created.Content
+            .ReadFromJsonAsync<DeliveryResponse>();
+
+        Assert.NotNull(delivery);
+
+        var firstUpdate = await client.PatchAsJsonAsync(
+            $"/api/deliveries/{delivery.Id}/status",
+            new UpdateDeliveryStatusRequest
+            {
+                Status = "InTransit"
+            });
+
+        firstUpdate.EnsureSuccessStatusCode();
+
+        var secondUpdate = await client.PatchAsJsonAsync(
+            $"/api/deliveries/{delivery.Id}/status",
+            new UpdateDeliveryStatusRequest
+            {
+                Status = "Delivered"
+            });
+
+        secondUpdate.EnsureSuccessStatusCode();
+
+        var invalidUpdate = await client.PatchAsJsonAsync(
+            $"/api/deliveries/{delivery.Id}/status",
+            new UpdateDeliveryStatusRequest
+            {
+                Status = "InTransit"
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalidUpdate.StatusCode);
+
+        var history = await client.GetFromJsonAsync<
+            List<DeliveryStatusHistoryResponse>>(
+            $"/api/deliveries/{delivery.Id}/history");
+
+        Assert.NotNull(history);
+        Assert.Equal(2, history.Count);
+
+        Assert.Equal("Created", history[0].PreviousStatus);
+        Assert.Equal("InTransit", history[0].NewStatus);
+
+        Assert.Equal("InTransit", history[1].PreviousStatus);
+        Assert.Equal("Delivered", history[1].NewStatus);
+    }
+
+    [Fact]
     public async Task Cancel_WhenCreated_ReturnsOkAndPersistsCancelledStatus()
     {
         using var factory = new DeliveryApiFactory();

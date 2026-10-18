@@ -7,6 +7,7 @@ public class DeliveryLabDbContext(DbContextOptions<DeliveryLabDbContext> options
     : DbContext(options)
 {
     public DbSet<Delivery> Deliveries => Set<Delivery>();
+    public DbSet<DeliveryStatusHistory> DeliveryStatusHistories => Set<DeliveryStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,6 +20,11 @@ public class DeliveryLabDbContext(DbContextOptions<DeliveryLabDbContext> options
         delivery.Property(d => d.OriginAddress).IsRequired();
         delivery.Property(d => d.DestinationAddress).IsRequired();
         delivery.Property(d => d.Status).IsRequired();
+
+        modelBuilder.Entity<DeliveryStatusHistory>()
+        .HasOne<Delivery>()
+        .WithMany()
+        .HasForeignKey(h => h.DeliveryId);
 
         // Valores fixos para que o seed não gere alterações a cada migration.
         delivery.HasData(
