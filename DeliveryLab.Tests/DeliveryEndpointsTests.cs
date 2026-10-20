@@ -1,9 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using DeliveryLab.Api.Data;
 using DeliveryLab.Api.DTOs;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace DeliveryLab.Tests;
@@ -370,14 +368,8 @@ public class DeliveryEndpointsTests
         var driver = await createdDriver.Content.ReadFromJsonAsync<DriverResponse>();
         Assert.NotNull(driver);
 
-        using (var scope = factory.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<DeliveryLabDbContext>();
-            var inactiveDriver = await dbContext.Drivers.FindAsync(driver.Id);
-            Assert.NotNull(inactiveDriver);
-            inactiveDriver.Active = false;
-            await dbContext.SaveChangesAsync();
-        }
+        var deactivated = await client.PatchAsync($"/api/drivers/{driver.Id}/deactivate", null);
+        Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
 
         var response = await client.PatchAsJsonAsync($"/api/deliveries/{delivery.Id}/driver",
             new AssignDriverRequest { DriverId = driver.Id });
@@ -389,6 +381,81 @@ public class DeliveryEndpointsTests
         Assert.Null(persisted.DriverId);
         Assert.Equal(delivery.UpdatedAt, persisted.UpdatedAt);
         Assert.Equal(delivery.Status, persisted.Status);
+    }
+
+    [Fact]
+    public async Task DeactivateDriver_WhenActive_ReturnsOkAndPreservesAssignedDelivery()
+    {
+        using var factory = new DeliveryApiFactory();
+        using var client = factory.CreateClientWithDatabase();
+        var createdDriver = await client.PostAsJsonAsync("/api/drivers",
+            new CreateDriverRequest { Name = "Motorista de teste", Document = "12345678900" });
+        createdDriver.EnsureSuccessStatusCode();
+        var driver = await createdDriver.Content.ReadFromJsonAsync<DriverResponse>();
+        Assert.NotNull(driver);
+        Assert.True(driver.Active);
+        var created = await client.PostAsJsonAsync("/api/deliveries", NewDeliveryRequest());
+        created.EnsureSuccessStatusCode();
+        var delivery = await created.Content.ReadFromJsonAsync<DeliveryResponse>();
+        Assert.NotNull(delivery);
+        var assigned = await client.PatchAsJsonAsync($"/api/deliveries/{delivery.Id}/driver",
+            new AssignDriverRequest { DriverId = driver.Id });
+        assigned.EnsureSuccessStatusCode();
+        var assignedDelivery = await assigned.Content.ReadFromJsonAsync<DeliveryResponse>();
+        Assert.NotNull(assignedDelivery);
+
+        var response = await client.PatchAsync($"/api/drivers/{driver.Id}/deactivate", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var deactivated = await response.Content.ReadFromJsonAsync<DriverResponse>();
+        Assert.NotNull(deactivated);
+        Assert.Equal(driver.Id, deactivated.Id);
+        Assert.False(deactivated.Active);
+        Assert.Equal(driver.Name, deactivated.Name);
+        Assert.Equal(driver.Document, deactivated.Document);
+        Assert.Equal(driver.CreatedAt, deactivated.CreatedAt);
+
+        var persistedDriver = await client.GetFromJsonAsync<DriverResponse>($"/api/drivers/{driver.Id}");
+        Assert.NotNull(persistedDriver);
+        Assert.False(persistedDriver.Active);
+        var persistedDelivery = await client.GetFromJsonAsync<DeliveryResponse>($"/api/deliveries/{delivery.Id}");
+        Assert.NotNull(persistedDelivery);
+        Assert.Equal(driver.Id, persistedDelivery.DriverId);
+        Assert.Equal(assignedDelivery.Status, persistedDelivery.Status);
+        Assert.Equal(assignedDelivery.UpdatedAt, persistedDelivery.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task DeactivateDriver_WhenDriverDoesNotExist_ReturnsNotFound()
+    {
+        using var factory = new DeliveryApiFactory();
+        using var client = factory.CreateClientWithDatabase();
+
+        var response = await client.PatchAsync($"/api/drivers/{Guid.NewGuid()}/deactivate", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeactivateDriver_WhenAlreadyInactive_ReturnsBadRequestAndKeepsDriverInactive()
+    {
+        using var factory = new DeliveryApiFactory();
+        using var client = factory.CreateClientWithDatabase();
+        var createdDriver = await client.PostAsJsonAsync("/api/drivers",
+            new CreateDriverRequest { Name = "Motorista de teste", Document = "12345678900" });
+        createdDriver.EnsureSuccessStatusCode();
+        var driver = await createdDriver.Content.ReadFromJsonAsync<DriverResponse>();
+        Assert.NotNull(driver);
+        var deactivated = await client.PatchAsync($"/api/drivers/{driver.Id}/deactivate", null);
+        Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
+
+        var response = await client.PatchAsync($"/api/drivers/{driver.Id}/deactivate", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Driver is already inactive.", await response.Content.ReadAsStringAsync());
+        var persisted = await client.GetFromJsonAsync<DriverResponse>($"/api/drivers/{driver.Id}");
+        Assert.NotNull(persisted);
+        Assert.False(persisted.Active);
     }
 
     private static CreateDeliveryRequest NewDeliveryRequest() => new()

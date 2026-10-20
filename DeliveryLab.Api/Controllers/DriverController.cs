@@ -32,6 +32,29 @@ public class DriverController(DriverService driverService) : ControllerBase
         }
     }
 
+    [HttpPatch("{id:guid}/deactivate")]
+    public async Task<ActionResult<DriverResponse>> Deactivate(Guid id)
+    {
+        try
+        {
+            var driver = await driverService.DeactivateAsync(id);
+
+            if (driver is null)
+            {
+                return NotFound(new
+                {
+                    message = "Driver not found."
+                });
+            }
+
+            return Ok(driver);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpGet]
     public async Task<ActionResult<List<DriverResponse>>> GetAll()
     {
