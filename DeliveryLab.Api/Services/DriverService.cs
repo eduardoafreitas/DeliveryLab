@@ -51,6 +51,26 @@ public class DriverService(DeliveryLabDbContext dbContext)
         return driver is null ? null : ToResponse(driver);
     }
 
+    public async Task<DriverResponse?> DeactivateAsync(Guid id)
+    {
+        var driver = await dbContext.Drivers.FindAsync(id);
+
+        if (driver is null)
+        {
+            return null;
+        }
+
+        if (!driver.Active)
+        {
+            throw new InvalidOperationException("Driver is already inactive.");
+        }
+
+        driver.Active = false;
+        await dbContext.SaveChangesAsync();
+
+        return ToResponse(driver);
+    }
+
     private static DriverResponse ToResponse(Driver driver) => new()
     {
         Id = driver.Id,
