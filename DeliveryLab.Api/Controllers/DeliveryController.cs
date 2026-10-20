@@ -122,6 +122,29 @@ public class DeliveryController(DeliveryService deliveryService) : ControllerBas
         }
     }
 
+    [HttpPatch("{id:guid}/driver")]
+    [ProducesResponseType(typeof(DeliveryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DeliveryResponse>> AssignDriver(Guid id, AssignDriverRequest request)
+    {
+        try
+        {
+            var delivery = await deliveryService.AssignDriverAsync(id, request);
+
+            if (delivery is null)
+            {
+                return NotFound();
+            }
+
+            return Ok(delivery);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpGet("{id:guid}/history")]
     public async Task<ActionResult<List<DeliveryStatusHistoryResponse>>> GetHistory(Guid id)
     {

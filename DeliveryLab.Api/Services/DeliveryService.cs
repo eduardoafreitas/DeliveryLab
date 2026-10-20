@@ -118,6 +118,35 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
         return ToResponse(delivery);
     }
 
+    public async Task<DeliveryResponse?> AssignDriverAsync(Guid id, AssignDriverRequest request)
+    {
+        var delivery = await dbContext.Deliveries.FindAsync(id);
+
+        if (delivery is null)
+        {
+            return null;
+        }
+
+        var driver = await dbContext.Drivers.FindAsync(request.DriverId);
+
+        if (driver is null)
+        {
+            return null;
+        }
+
+        if (!driver.Active)
+        {
+            throw new InvalidOperationException("Cannot assign an inactive driver.");
+        }
+
+        delivery.DriverId = driver.Id;
+        delivery.UpdatedAt = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync();
+
+        return ToResponse(delivery);
+    }
+
     public async Task<List<DeliveryStatusHistoryResponse>> GetHistoryAsync(Guid deliveryId)
     {
         return await dbContext.DeliveryStatusHistories
@@ -137,6 +166,7 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
     private static DeliveryResponse ToResponse(Delivery delivery) => new()
     {
         Id = delivery.Id,
+        DriverId = delivery.DriverId,
         TrackingCode = delivery.TrackingCode,
         RecipientName = delivery.RecipientName,
         OriginAddress = delivery.OriginAddress,

@@ -3,6 +3,7 @@ namespace DeliveryLab.Api.DTOs;
 public class DeliveryResponse
 {
     public Guid Id { get; set; }
+    public Guid? DriverId { get; set; }
     public string TrackingCode { get; set; } = string.Empty;
     public string RecipientName { get; set; } = string.Empty;
     public string OriginAddress { get; set; } = string.Empty;
