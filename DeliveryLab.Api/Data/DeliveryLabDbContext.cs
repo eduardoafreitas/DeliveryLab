@@ -9,6 +9,8 @@ public class DeliveryLabDbContext(DbContextOptions<DeliveryLabDbContext> options
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<DeliveryStatusHistory> DeliveryStatusHistories => Set<DeliveryStatusHistory>();
 
+    public DbSet<Driver> Drivers => Set<Driver>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var delivery = modelBuilder.Entity<Delivery>();
@@ -25,6 +27,13 @@ public class DeliveryLabDbContext(DbContextOptions<DeliveryLabDbContext> options
         .HasOne<Delivery>()
         .WithMany()
         .HasForeignKey(h => h.DeliveryId);
+
+        var driver = modelBuilder.Entity<Driver>();
+
+        driver.HasKey(d => d.Id);
+        driver.Property(d => d.Name).IsRequired();
+        driver.Property(d => d.Document).IsRequired();
+        driver.HasIndex(d => d.Document).IsUnique();
 
         // Valores fixos para que o seed não gere alterações a cada migration.
         delivery.HasData(

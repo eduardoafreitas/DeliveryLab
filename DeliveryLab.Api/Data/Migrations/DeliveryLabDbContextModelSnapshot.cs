@@ -117,6 +117,34 @@ namespace DeliveryLab.Api.Data.Migrations
                     b.ToTable("DeliveryStatusHistories");
                 });
 
+            modelBuilder.Entity("DeliveryLab.Api.Models.Driver", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Document")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Document")
+                        .IsUnique();
+
+                    b.ToTable("Drivers");
+                });
+
             modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryStatusHistory", b =>
                 {
                     b.HasOne("DeliveryLab.Api.Models.Delivery", null)
