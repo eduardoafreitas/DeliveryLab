@@ -22,6 +22,9 @@ public class DeliveryLabDbContext(DbContextOptions<DeliveryLabDbContext> options
         delivery.Property(d => d.OriginAddress).IsRequired();
         delivery.Property(d => d.DestinationAddress).IsRequired();
         delivery.Property(d => d.Status).IsRequired();
+        delivery.HasOne<Driver>()
+            .WithMany()
+            .HasForeignKey(d => d.DriverId);
 
         modelBuilder.Entity<DeliveryStatusHistory>()
         .HasOne<Delivery>()

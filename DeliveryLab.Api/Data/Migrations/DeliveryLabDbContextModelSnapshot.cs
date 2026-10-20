@@ -38,6 +38,9 @@ namespace DeliveryLab.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateOnly?>("EstimatedDeliveryDate")
                         .HasColumnType("date");
 
@@ -61,6 +64,8 @@ namespace DeliveryLab.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DriverId");
 
                     b.HasIndex("TrackingCode")
                         .IsUnique();
@@ -143,6 +148,13 @@ namespace DeliveryLab.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Drivers");
+                });
+
+            modelBuilder.Entity("DeliveryLab.Api.Models.Delivery", b =>
+                {
+                    b.HasOne("DeliveryLab.Api.Models.Driver", null)
+                        .WithMany()
+                        .HasForeignKey("DriverId");
                 });
 
             modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryStatusHistory", b =>
