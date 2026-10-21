@@ -48,6 +48,11 @@ public class DeliveryController(DeliveryService deliveryService) : ControllerBas
             return BadRequest("PageSize must be greater than or equal to 1.");
         }
 
+        if (pageSize > 100)
+        {
+            return BadRequest("PageSize must be less than or equal to 100.");
+        }
+
         var deliveries = await deliveryService.GetAllAsync(status, page, pageSize);
 
         return Ok(deliveries);

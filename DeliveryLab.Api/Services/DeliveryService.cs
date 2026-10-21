@@ -33,6 +33,13 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
         int page,
         int pageSize)
     {
+        long offset = ((long)page - 1) * pageSize;
+
+        if (offset > int.MaxValue)
+        {
+            return new List<DeliveryResponse>();
+        }
+
         var query = dbContext.Deliveries
             .AsNoTracking()
             .AsQueryable();
@@ -45,7 +52,7 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
         var deliveries = await query
             .OrderByDescending(d => d.CreatedAt)
             .ThenBy(d => d.Id)
-            .Skip((page - 1) * pageSize)
+            .Skip((int)offset)
             .Take(pageSize)
             .ToListAsync();
 
