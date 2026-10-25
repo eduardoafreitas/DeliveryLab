@@ -95,6 +95,31 @@ namespace DeliveryLab.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DeliveryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Successful")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryId");
+
+                    b.ToTable("DeliveryAttempts");
+                });
+
             modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryStatusHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -155,6 +180,15 @@ namespace DeliveryLab.Api.Data.Migrations
                     b.HasOne("DeliveryLab.Api.Models.Driver", null)
                         .WithMany()
                         .HasForeignKey("DriverId");
+                });
+
+            modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryAttempt", b =>
+                {
+                    b.HasOne("DeliveryLab.Api.Models.Delivery", null)
+                        .WithMany()
+                        .HasForeignKey("DeliveryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DeliveryLab.Api.Models.DeliveryStatusHistory", b =>
