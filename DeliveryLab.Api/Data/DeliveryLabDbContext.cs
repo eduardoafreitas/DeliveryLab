@@ -8,6 +8,7 @@ public class DeliveryLabDbContext(DbContextOptions<DeliveryLabDbContext> options
 {
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<DeliveryStatusHistory> DeliveryStatusHistories => Set<DeliveryStatusHistory>();
+    public DbSet<DeliveryAttempt> DeliveryAttempts => Set<DeliveryAttempt>();
 
     public DbSet<Driver> Drivers => Set<Driver>();
 
@@ -30,6 +31,15 @@ public class DeliveryLabDbContext(DbContextOptions<DeliveryLabDbContext> options
         .HasOne<Delivery>()
         .WithMany()
         .HasForeignKey(h => h.DeliveryId);
+
+        var attempt = modelBuilder.Entity<DeliveryAttempt>();
+
+        attempt.HasKey(a => a.Id);
+        attempt.Property(a => a.Notes).IsRequired(false);
+        attempt.HasIndex(a => a.DeliveryId);
+        attempt.HasOne<Delivery>()
+            .WithMany()
+            .HasForeignKey(a => a.DeliveryId);
 
         var driver = modelBuilder.Entity<Driver>();
 

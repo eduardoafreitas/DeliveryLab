@@ -84,29 +84,37 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
             return null;
         }
 
+        ApplyStatusChange(delivery, request.Status, DateTime.UtcNow);
+
+        await dbContext.SaveChangesAsync();
+
+        return ToResponse(delivery);
+    }
+
+    private void ApplyStatusChange(Delivery delivery, string status, DateTime changedAt)
+    {
         bool isValidTransition =
             (delivery.Status == "Created" &&
-                (request.Status == "InTransit" ||
-                 request.Status == "Cancelled"))
+                (status == "InTransit" ||
+                 status == "Cancelled"))
             ||
             (delivery.Status == "InTransit" &&
-                (request.Status == "Delivered" ||
-                 request.Status == "Cancelled"));
+                (status == "Delivered" ||
+                 status == "Cancelled"));
 
         if (!isValidTransition)
         {
-            throw new InvalidOperationException($"Cannot change status from {delivery.Status} to {request.Status}.");
+            throw new InvalidOperationException($"Cannot change status from {delivery.Status} to {status}.");
         }
 
         var previousStatus = delivery.Status;
-        var now = DateTime.UtcNow;
 
-        delivery.Status = request.Status;
-        delivery.UpdatedAt = now;
+        delivery.Status = status;
+        delivery.UpdatedAt = changedAt;
 
-        if (request.Status == "Delivered")
+        if (status == "Delivered")
         {
-            delivery.DeliveredAt = now;
+            delivery.DeliveredAt = changedAt;
         }
 
         var history = new DeliveryStatusHistory
@@ -114,15 +122,64 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
             Id = Guid.NewGuid(),
             DeliveryId = delivery.Id,
             PreviousStatus = previousStatus,
-            NewStatus = request.Status,
-            ChangedAt = now
+            NewStatus = status,
+            ChangedAt = changedAt
         };
 
         dbContext.DeliveryStatusHistories.Add(history);
+    }
+
+    public async Task<DeliveryAttemptResponse?> CreateAttemptAsync(Guid id, CreateDeliveryAttemptRequest request)
+    {
+        var delivery = await dbContext.Deliveries.FindAsync(id);
+
+        if (delivery is null)
+        {
+            return null;
+        }
+
+        if (delivery.Status != "InTransit")
+        {
+            throw new InvalidOperationException("Only deliveries in transit can receive attempts.");
+        }
+
+        var now = DateTime.UtcNow;
+        var attempt = new DeliveryAttempt
+        {
+            Id = Guid.NewGuid(),
+            DeliveryId = delivery.Id,
+            AttemptedAt = now,
+            Successful = request.Successful,
+            Notes = request.Notes
+        };
+
+        if (request.Successful)
+        {
+            ApplyStatusChange(delivery, "Delivered", now);
+        }
+
+        dbContext.DeliveryAttempts.Add(attempt);
 
         await dbContext.SaveChangesAsync();
 
-        return ToResponse(delivery);
+        return ToResponse(attempt);
+    }
+
+    public async Task<List<DeliveryAttemptResponse>?> GetAttemptsAsync(Guid id)
+    {
+        if (!await dbContext.Deliveries.AnyAsync(d => d.Id == id))
+        {
+            return null;
+        }
+
+        var attempts = await dbContext.DeliveryAttempts
+            .AsNoTracking()
+            .Where(a => a.DeliveryId == id)
+            .OrderBy(a => a.AttemptedAt)
+            .ThenBy(a => a.Id)
+            .ToListAsync();
+
+        return attempts.Select(ToResponse).ToList();
     }
 
     public async Task<DeliveryResponse?> AssignDriverAsync(Guid id, AssignDriverRequest request)
@@ -169,6 +226,15 @@ public class DeliveryService(DeliveryLabDbContext dbContext)
             })
             .ToListAsync();
     }
+
+    private static DeliveryAttemptResponse ToResponse(DeliveryAttempt attempt) => new()
+    {
+        Id = attempt.Id,
+        DeliveryId = attempt.DeliveryId,
+        AttemptedAt = attempt.AttemptedAt,
+        Successful = attempt.Successful,
+        Notes = attempt.Notes
+    };
 
     private static DeliveryResponse ToResponse(Delivery delivery) => new()
     {

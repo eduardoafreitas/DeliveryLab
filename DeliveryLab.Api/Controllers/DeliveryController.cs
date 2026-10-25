@@ -150,6 +150,32 @@ public class DeliveryController(DeliveryService deliveryService) : ControllerBas
         }
     }
 
+    [HttpPost("{id:guid}/attempts")]
+    [ProducesResponseType(typeof(DeliveryAttemptResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DeliveryAttemptResponse>> CreateAttempt(Guid id, CreateDeliveryAttemptRequest request)
+    {
+        try
+        {
+            var attempt = await deliveryService.CreateAttemptAsync(id, request);
+            return attempt is null ? NotFound() : Ok(attempt);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpGet("{id:guid}/attempts")]
+    [ProducesResponseType(typeof(List<DeliveryAttemptResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<DeliveryAttemptResponse>>> GetAttempts(Guid id)
+    {
+        var attempts = await deliveryService.GetAttemptsAsync(id);
+        return attempts is null ? NotFound() : Ok(attempts);
+    }
+
     [HttpGet("{id:guid}/history")]
     public async Task<ActionResult<List<DeliveryStatusHistoryResponse>>> GetHistory(Guid id)
     {
